@@ -1,0 +1,64 @@
+---
+- hosts: all
+  vars_prompt:
+
+    - name: change_number
+      prompt: Please enter the change number
+      private: no
+  tasks:
+   - shell: |
+      w >> /tmp/{{ change_number }}.txt
+      echo "=============" /tmp/{{ change_number }}_ansible_hostname.txt
+      uptime >> /tmp/{{ change_number }}_ansible_hostname.txt
+      echo "=============" /tmp/{{ change_number }}_ansible_hostname.txt
+      df -h >> /tmp/{{ change_number }}.txt
+     when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+   - fetch:
+       src: /tmp/{{ change_number }}_ansible_hostname.txt
+       dest: /tmp/
+     when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+
+   - name: Upgrade all packages
+     yum:
+      name: '*'
+      state: latest
+     when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+
+   - name: restart system to reboot to newest kernel
+     shell: |
+      sleep 5       
+      reboot       
+     async: 1
+     poll: 0
+     when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+
+  - name: wait for 10 seconds
+    pause:
+      seconds: 10
+     when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+
+
+  - name: wait for the system to reboot
+    wait_for_connection:
+      connect_timeout: 20
+      sleep: 5
+      delay: 5
+      timeout: 60
+    when:
+     - ansible_distribution == "rhel6" and ansible_kernel <= 2.6 or
+       ansible_distribution == "rhel7" and ansible_kernel <= 3.6
+
+  - shell: |
+      uptime 
+
+  
